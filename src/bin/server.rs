@@ -13,6 +13,7 @@ use std::os::unix::io::AsRawFd;
 
 use std::path::Path;
 
+use std::thread::spawn;
 use std::thread::sleep;
 
 use std::time::Duration;
@@ -118,19 +119,24 @@ impl raingauge::Output for NopOutput {
 
 
 pub fn main() {
-    //let f = OpenOptions::new().write(true).open("/dev/ttyAMA0").unwrap();
+    let f = OpenOptions::new().write(true).open("/dev/ttyAMA0").unwrap();
 
     let mut tipper_gpio = Gpio::new(24);
-    loop {
-        let value = tipper_gpio.next_value();
-        println!("value={}",value);
-    }
-    /*let tx_pwr = NopOutput { val:false };
+    let tx_pwr = NopOutput { val:false };
     let rg = raingauge::RainGauge::new(tx_pwr, f);
+
+    let timeout_rg = rg.clone();
+    spawn(move|| {
+            loop {
+                sleep(Duration::from_secs(2));
+
+                timeout_rg.transmit_timeout();
+            }
+        });
 
     loop {
         let value = tipper_gpio.next_value();
         rg.tip(value);
-    }*/
+    }
     //rg.stop();
 }

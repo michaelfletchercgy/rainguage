@@ -10,19 +10,18 @@ use std::sync::mpsc::channel;
 use std::sync::mpsc::Sender;
 use std::thread;
 
-// an input
-// connects to a method with a value
-
 pub trait Output {
     fn value(&mut self, new_value:bool);
 }
 
+#[derive(Clone)]
 pub struct RainGauge {
     tx: Sender<Msg>
 }
 
 enum Msg {
     Tipper(bool),
+    Timeout,
     Stop
 }
 
@@ -62,6 +61,8 @@ impl RainGauge {
 
 
             loop {
+                let mut xmit = false;
+
                 match rx.recv().unwrap() {
                     Msg::Tipper(x) => {
                         if last_value.is_some() {
@@ -75,6 +76,7 @@ impl RainGauge {
                                 let sql = format!("INSERT INTO measurement (time_created, value) VALUES ({}, 1)", ts);
                                 println!("sql={}", sql);
                                 conn.execute(sql).unwrap();
+                                xmit = true;
                             }
                         }
 
@@ -82,11 +84,16 @@ impl RainGauge {
                     },
                     Msg::Stop => {
                         break;
+                    },
+                    Msg::Timeout => {
+                        xmit = true;
                     }
                 };
 
-                write!(radio_tx, "TIPS={}", tips).unwrap();
-                transmit_power.value(false);
+                if xmit {
+                    write!(radio_tx, "TIPS={}", tips).unwrap();
+                    transmit_power.value(false);
+                }
             }
         });
 
@@ -97,6 +104,10 @@ impl RainGauge {
 
     pub fn tip(&self, value:bool) {
         self.tx.send(Msg::Tipper(value)).unwrap();
+    }
+
+    pub fn transmit_timeout(&self) {
+        self.tx.send(Msg::Timeout).unwrap();
     }
 
     pub fn stop(&self) {
