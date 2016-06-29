@@ -1,0 +1,8 @@
+[package]
+name = "raingauge"
+version = "0.1.0"
+authors = ["Michael Fletcher <m.fletcher@theplanet.ca>"]
+
+[dependencies]
+libc = "0.2.12"
+sqlite = "0.22.0"
