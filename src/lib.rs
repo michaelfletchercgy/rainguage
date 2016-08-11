@@ -2,7 +2,6 @@
 extern crate sqlite;
 
 use sqlite::Connection;
-use sqlite::Readable;
 use sqlite::State;
 
 use std::io::Write;
