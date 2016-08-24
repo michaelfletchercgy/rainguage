@@ -90,8 +90,11 @@ impl RainGauge {
                 };
 
                 if xmit {
-                    write!(radio_tx, "TIPS={}", tips).unwrap();
-                    transmit_power.value(false);
+                    transmit_power.value(true);
+                    for _ in 0..5 {
+                        write!(radio_tx, "TIPS={}", tips).unwrap();
+                        transmit_power.value(false);
+                    }
                 }
             }
         });
