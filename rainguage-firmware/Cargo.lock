@@ -214,6 +214,7 @@ version = "0.1.0"
 dependencies = [
  "cortex-m",
  "cortex-m-rt",
+ "embedded-hal",
  "feather_m0",
  "panic-halt",
  "sx127x_lora",
