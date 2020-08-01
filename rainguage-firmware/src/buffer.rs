@@ -7,16 +7,12 @@ pub struct Buffer {
 }
 
 impl Buffer {
-    pub fn as_bytes(&self) -> &[u8] {
-        &self.data[0..self.pos]
-    }
-
-    pub fn as_all_bytes(&self) -> [u8; 255] {
+    pub fn as_bytes(&self) -> [u8; 255] {
         self.data
     }
 
-    pub fn size(&self) -> &usize {
-        &self.pos
+    pub fn size(&self) -> usize {
+        self.pos
     }
 
     pub const fn new() -> Buffer {
@@ -25,10 +21,6 @@ impl Buffer {
             pos: 0
         }
     }
-
-    pub fn reset(&mut self) {
-        self.pos = 0;
-    }
 }
 impl Write for Buffer {
     fn write_str(&mut self, s: &str) -> Result {
@@ -36,7 +28,10 @@ impl Write for Buffer {
 
         for x in 0..bytes.len() {
             self.data[self.pos] = bytes[x];
-            self.pos = self.pos + 1;
+
+            if self.pos < self.data.len() - 1 {
+                self.pos = self.pos + 1;
+            }
         }
 
         Ok(())

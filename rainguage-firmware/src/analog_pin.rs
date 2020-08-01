@@ -24,8 +24,8 @@ impl AnalogPin {
     }
 
     fn initialize(&mut self) {
-        let linearity = 0;
-        let bias = 0;
+        let _ = 0; // linearity
+        let _ = 0; // bias
 
         // unsafe {
         //     self.adc.calib.write(|w| w.linearity_cal().bits(linearity));
