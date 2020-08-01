@@ -31,6 +31,7 @@ impl Write for UsbWrite {
                                 }
                             },
                             Err(_) => {
+                                super::metrics::increment_usb_error_cnt();
                                 // wouldblock is stalling for some reason.
                                 stop = true;
                             }

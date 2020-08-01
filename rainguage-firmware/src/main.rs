@@ -12,6 +12,7 @@ extern crate sx127x_lora;
 
 mod analog_pin;
 mod buffer;
+mod metrics;
 mod usb_write;
 
 use analog_pin::AnalogPin;
@@ -34,6 +35,9 @@ use usb_write::UsbWrite;
 use usbd_serial::{SerialPort, USB_CLASS_CDC};
 
 const FREQUENCY: i64 = 915;
+
+// How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
+const TRANSMIT_CYCLE: usize = 10;
 
 #[entry]
 fn main() -> ! {
@@ -125,37 +129,40 @@ fn main() -> ! {
             }
          };
 
-    let mut loop_cnt: usize = 0;
+    let id_word0 = unsafe { *(0x0080A00C as *const u32) };
+    let id_word1 = unsafe { *(0x0080A040 as *const u32) };
+    let id_word2 = unsafe { *(0x0080A044 as *const u32) };
+    let id_word3 = unsafe { *(0x0080A048 as *const u32) };
 
+    let mut loop_cnt: usize = 0;
+    let mut transmit_counter = TRANSMIT_CYCLE;
     loop {
         cycle_delay(15 * 1024 * 1024);
         red_led.set_high().unwrap();
 
         let vbat_value = vbat.read();
 
-        // TODO Probably not required.
-        lora.set_tx_power(23, 1).unwrap();
-
-        // TODO Probably not required.
-        lora.set_preamble_length(8).unwrap();
-
-                            
-        
         let interrupt_count = unsafe{ INTERRUPT_COUNT };
         let usb_serial_bytes_read = unsafe{ USB_SERIAL_BYTES_READ };
 
-        let mut buffer = Buffer::new();
-        write!(buffer, ">>>>>> loop={} vbat={}, usb_int_cnt={}, usb_ser_read={}\r\n",
-            loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read).unwrap();
-        
-        match lora.transmit_payload_busy(buffer.as_bytes(), buffer.size()) {
-            Ok(c) => { 
-                write!(usb_write, "xmit {}\n", c).unwrap();
-            },
-            Err(err) => {
-                write!(usb_write, "err={:?}", err).unwrap();
+        if transmit_counter >= TRANSMIT_CYCLE {
+            transmit_counter = 0;
+            let mut buffer = Buffer::new();
+
+            write!(buffer, ">>>>>> loop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} calib={:x} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
+                loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read, metrics::get_usb_error_cnt(), metrics::get_lora_transmit_error_cnt(), calib,
+                id_word0, id_word1, id_word2, id_word3).unwrap();
+            
+            match lora.transmit_payload_busy(buffer.as_bytes(), buffer.size()) {
+                Ok(_) => { 
+                    //write!(usb_write, "xmit {}\n", c).unwrap();
+                },
+                Err(_) => {
+                    metrics::increment_lora_transmit_error_cnt();
+                }
             }
         }
+        transmit_counter = transmit_counter + 1;
 
         // write!(usb_write, "interrupt_count={} usb_serial_bytes_read={}, vbat={} vbat_volt={}\r\n", 
         // interrupt_count, usb_serial_bytes_read, vbat_value, vbat_volt).unwrap();
