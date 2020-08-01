@@ -24,41 +24,22 @@ impl AnalogPin {
     }
 
     fn initialize(&mut self) {
-        let _ = 0; // linearity
-        let _ = 0; // bias
+        // Read the NVM Software Calibration Data and write it back to the adc CALIB register
+        let nvm_software_calib_addr = 0x806020u32 as *const u128;
+        let nvm_software_calib: u128 = unsafe { *nvm_software_calib_addr };
 
-        // unsafe {
-        //     self.adc.calib.write(|w| w.linearity_cal().bits(linearity));
-        //     self.adc.calib.write(|w| w.bias_cal().bits(bias));
-        // }
-        /*
-        // ADC Bias Calibration
-        uint32_t bias = (*((uint32_t *) ADC_FUSES_BIASCAL_ADDR) & ADC_FUSES_BIASCAL_Msk) >> ADC_FUSES_BIASCAL_Pos;
+        let adc_linearity_calibration = ((nvm_software_calib >> 27) & 0xff) as u8;
+        let adc_bias_calibration = ((nvm_software_calib >> 35) & 0x8) as u8;
 
-        // ADC Linearity bits 4:0
-        uint32_t linearity = (*((uint32_t *) ADC_FUSES_LINEARITY_0_ADDR) & ADC_FUSES_LINEARITY_0_Msk) >> ADC_FUSES_LINEARITY_0_Pos;
-
-        // ADC Linearity bits 7:5
-        linearity |= ((*((uint32_t *) ADC_FUSES_LINEARITY_1_ADDR) & ADC_FUSES_LINEARITY_1_Msk) >> ADC_FUSES_LINEARITY_1_Pos) << 5;
-
-        ADC->CALIB.reg = ADC_CALIB_BIAS_CAL(bias) | ADC_CALIB_LINEARITY_CAL(linearity);
-        */
-        /*
-        if ( g_APinDescription[ulPin].ulPin & 1 ) // is pin odd?
-        {
-          uint32_t temp ;
-  
-          // Get whole current setup for both odd and even pins and remove odd one
-          temp = (PORT->Group[g_APinDescription[ulPin].ulPort].PMUX[g_APinDescription[ulPin].ulPin >> 1].reg) & PORT_PMUX_PMUXE( 0xF ) ;
-          // Set new muxing
-          PORT->Group[g_APinDescription[ulPin].ulPort].PMUX[g_APinDescription[ulPin].ulPin >> 1].reg = temp|PORT_PMUX_PMUXO( ulPeripheral ) ;
-          // Enable port mux
-          PORT->Group[g_APinDescription[ulPin].ulPort].PINCFG[g_APinDescription[ulPin].ulPin].reg |= PORT_PINCFG_PMUXEN | PORT_PINCFG_DRVSTR;
+        unsafe {
+            self.adc.calib.write(|w| w.linearity_cal().bits(adc_linearity_calibration)
+                                    .bias_cal().bits(adc_bias_calibration));
         }
-        */
+
         self.sync_adc();
         self.adc.ctrlb.write(|w| w.prescaler().div32());
         self.adc.ctrlb.write(|w| w.ressel()._12bit());
+        
         unsafe { self.adc.sampctrl.write(|w| w.samplen().bits(5)); }
         
         self.sync_adc();
