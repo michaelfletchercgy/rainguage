@@ -149,8 +149,8 @@ fn main() -> ! {
             transmit_counter = 0;
             let mut buffer = Buffer::new();
 
-            write!(buffer, ">>>>>> loop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} calib={:x} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
-                loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read, metrics::get_usb_error_cnt(), metrics::get_lora_transmit_error_cnt(), calib,
+            write!(buffer, ">>>>>> loop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
+                loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read, metrics::get_usb_error_cnt(), metrics::get_lora_transmit_error_cnt(),
                 id_word0, id_word1, id_word2, id_word3).unwrap();
             
             match lora.transmit_payload_busy(buffer.as_bytes(), buffer.size()) {
