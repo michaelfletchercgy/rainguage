@@ -9,21 +9,25 @@ pub struct AnalogPin {
 
 impl AnalogPin {
     pub fn new(clocks:&mut GenericClockController, adc:ADC) -> AnalogPin {
-        // before enabling the ADC, the asynchronous clock source must be selected and enabled, and the ADC reference must be
-        // configured.
-        let gclock = clocks.gclk0();
-        clocks.adc(&gclock).unwrap();
-
         let mut result = AnalogPin {
             adc
         };
+
+        // The calibration data was actually initialized fairly early.  I am trying to keep the sequence the
+        // same as the arduino library.
+        result.read_and_write_calibration();
+
+        // before enabling the ADC, the asynchronous clock source must be selected and enabled, and the ADC reference must be
+        // configured.
+        let gclock = clocks.gclk0();
+        clocks.adc(&gclock).unwrap().freq(); // grabbing frequency doesn't do anything besides make me feel better.
 
         result.initialize();
 
         result
     }
 
-    fn initialize(&mut self) {
+    fn read_and_write_calibration(&mut self) {
         // Read the NVM Software Calibration Data and write it back to the adc CALIB register
         let nvm_software_calib_addr = 0x806020u32 as *const u128;
         let nvm_software_calib: u128 = unsafe { *nvm_software_calib_addr };
@@ -35,19 +39,16 @@ impl AnalogPin {
             self.adc.calib.write(|w| w.linearity_cal().bits(adc_linearity_calibration)
                                     .bias_cal().bits(adc_bias_calibration));
         }
+    }
 
-        // Considder dropping this ...
+    fn initialize(&mut self) {
         self.sync_adc();
-        self.adc.ctrlb.write(|w| w.prescaler().div32());
-        self.adc.ctrlb.write(|w| w.ressel()._12bit());
-        
+        self.adc.ctrlb.write(|w| w.prescaler().div32().ressel()._12bit());
         unsafe { self.adc.sampctrl.write(|w| w.samplen().bits(5)); }
-        
+
         self.sync_adc();
         self.adc.inputctrl.write(|w| w.muxneg().gnd());
-        self.adc.avgctrl.write(|w| w.samplenum()._1());
-        unsafe { self.adc.avgctrl.write(|w| w.adjres().bits(0)); }
-        // to this
+        unsafe { self.adc.avgctrl.write(|w| w.samplenum()._1().adjres().bits(0)); }
 
         self.sync_adc();
         self.adc.inputctrl.write(|w| w.gain().div2());
@@ -63,18 +64,19 @@ impl AnalogPin {
      * Read the voltage from a pin.
      */
     pub fn read(&mut self) -> u16 {
-        self.adc.inputctrl.write(|w| w.muxpos().pin7());
         self.sync_adc(); 
+        self.adc.inputctrl.write(|w| w.muxpos().pin7());        
 
         // enable the adc
-        self.adc.ctrla.write(|w| w.enable().set_bit());
         self.sync_adc(); 
+        self.adc.ctrla.write(|w| w.enable().set_bit());
 
         // start the analog-digital conversion.  The first value must be thrown away
-        self.adc.swtrig.write(|w| w.start().set_bit());
         self.sync_adc();
-
+        self.adc.swtrig.write(|w| w.start().set_bit());
+        
         // clear the data ready flag
+        self.sync_adc();
         self.adc.intflag.write(|w| w.resrdy().set_bit());
 
         // start the analog-digital conversion again.
