@@ -37,7 +37,8 @@ use usbd_serial::{SerialPort, USB_CLASS_CDC};
 const FREQUENCY: i64 = 915;
 
 // How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
-const TRANSMIT_CYCLE: usize = 10;
+// 200 is roughly once per minute.
+const TRANSMIT_CYCLE: usize = 200;
 
 #[entry]
 fn main() -> ! {
