@@ -149,7 +149,9 @@ fn main() -> ! {
             transmit_counter = 0;
             let mut buffer = Buffer::new();
 
-            write!(buffer, ">>>>>> loop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
+            // The RadioHead library we are currently using on the receive side includes a 4-byte header.  So we
+            // include four X's as our header and configure the receive side in promiscious mode.
+            write!(buffer, "XXXXloop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
                 loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read, metrics::get_usb_error_cnt(), metrics::get_lora_transmit_error_cnt(),
                 id_word0, id_word1, id_word2, id_word3).unwrap();
             
