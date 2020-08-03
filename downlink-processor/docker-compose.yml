@@ -1,0 +1,15 @@
+version: '3'
+
+services:
+  grafana:
+    image: grafana/grafana:7.1.1
+    restart: always
+    ports:
+      - "3000:3000"
+  db:
+    image: postgres:12.3
+    restart: always
+    ports:
+      - "15432:5432"
+    environment:
+      - POSTGRES_PASSWORD=supersecret99
