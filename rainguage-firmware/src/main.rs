@@ -9,14 +9,15 @@ extern crate usb_device;
 extern crate usbd_serial;
 extern crate embedded_hal;
 extern crate sx127x_lora;
+extern crate rainguage_messages;
 
 mod analog_pin;
-mod buffer;
 mod metrics;
 mod usb_write;
 
+use rainguage_messages::TelemetryPacket;
+
 use analog_pin::AnalogPin;
-use buffer::Buffer;
 use core::fmt::Write;
 use cortex_m::asm::delay as cycle_delay;
 use cortex_m::peripheral::NVIC;
@@ -38,7 +39,7 @@ const FREQUENCY: i64 = 915;
 
 // How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
 // 200 is roughly once per minute.
-const TRANSMIT_CYCLE: usize = 200;
+const TRANSMIT_CYCLE: usize = 16;
 
 #[entry]
 fn main() -> ! {
@@ -135,7 +136,7 @@ fn main() -> ! {
     let id_word2 = unsafe { *(0x0080A044 as *const u32) };
     let id_word3 = unsafe { *(0x0080A048 as *const u32) };
 
-    let mut loop_cnt: usize = 0;
+    let mut loop_cnt: u32 = 0;
     let mut transmit_counter = TRANSMIT_CYCLE;
     loop {
         cycle_delay(15 * 1024 * 1024);
@@ -143,20 +144,26 @@ fn main() -> ! {
 
         let vbat_value = vbat.read();
 
-        let interrupt_count = unsafe{ INTERRUPT_COUNT };
         let usb_serial_bytes_read = unsafe{ USB_SERIAL_BYTES_READ };
 
         if transmit_counter >= TRANSMIT_CYCLE {
             transmit_counter = 0;
-            let mut buffer = Buffer::new();
+            let mut buffer:[u8; 255] = [0; 255];
+
+            let mut packet = TelemetryPacket::new();
+            packet.device_id = encode_device_id(id_word0, id_word1, id_word2, id_word3);
+            packet.loop_cnt = loop_cnt;
+            packet.vbat = vbat_value as u32;
+            packet.usb_bytes_read = usb_serial_bytes_read;
+            packet.usb_error_cnt = metrics::get_usb_error_cnt();
+            packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
+
+            rainguage_messages::serialize(&packet, &mut buffer[4..]).unwrap();
 
             // The RadioHead library we are currently using on the receive side includes a 4-byte header.  So we
             // include four X's as our header and configure the receive side in promiscious mode.
-            write!(buffer, "XXXXloop={} vbat={}, usb_int_cnt={}, usb_ser_read={}, usb_err_cnt={}, lora_xmit_cnt={} id0={:x} id1={:x} id2={:x} id3={:x}\r\n",
-                loop_cnt, vbat_value, interrupt_count, usb_serial_bytes_read, metrics::get_usb_error_cnt(), metrics::get_lora_transmit_error_cnt(),
-                id_word0, id_word1, id_word2, id_word3).unwrap();
-            
-            match lora.transmit_payload_busy(buffer.as_bytes(), buffer.size()) {
+            // we need to include 4 b
+            match lora.transmit_payload_busy(buffer, buffer.len()) {
                 Ok(_) => { 
                     //write!(usb_write, "xmit {}\n", c).unwrap();
                 },
@@ -176,6 +183,36 @@ fn main() -> ! {
      }
 }
 
+fn encode_device_id(word0: u32, word1: u32, word2: u32, word3: u32) -> [u8; 16] {
+    let mut device_id = [0; 16];
+
+    let word0_bytes = word0.to_be_bytes();
+    device_id[0] = word0_bytes[0];
+    device_id[1] = word0_bytes[1];
+    device_id[2] = word0_bytes[2];
+    device_id[3] = word0_bytes[3];
+
+    let word1_bytes = word1.to_be_bytes();
+    device_id[4] = word1_bytes[0];
+    device_id[5] = word1_bytes[1];
+    device_id[6] = word1_bytes[2];
+    device_id[7] = word1_bytes[3];
+
+    let word2_bytes = word2.to_be_bytes();
+    device_id[8] = word2_bytes[0];
+    device_id[9] = word2_bytes[1];
+    device_id[10] = word2_bytes[2];
+    device_id[11] = word2_bytes[3];
+
+    let word3_bytes = word3.to_be_bytes();
+    device_id[12] = word3_bytes[0];
+    device_id[13] = word3_bytes[1];
+    device_id[14] = word3_bytes[2];
+    device_id[15] = word3_bytes[3];
+
+    device_id
+
+}
 /// If we fail in a fatal way, the best we can do is print that error
 /// over and over
 fn fatal_error(msg: &str, usb_output:&mut UsbWrite) -> ! {
@@ -190,13 +227,9 @@ fn fatal_error(msg: &str, usb_output:&mut UsbWrite) -> ! {
 static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
 static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
-static mut INTERRUPT_COUNT:u64 = 0;
-static mut USB_SERIAL_BYTES_READ: usize = 0;
+static mut USB_SERIAL_BYTES_READ: u32 = 0;
 
 fn poll_usb() {
-    unsafe {
-        INTERRUPT_COUNT = INTERRUPT_COUNT + 1;
-    }
     unsafe {
         USB_BUS.as_mut().map(|usb_dev| {
             USB_SERIAL.as_mut().map(|serial| {
@@ -204,7 +237,7 @@ fn poll_usb() {
                 let mut buf = [0u8; 64];
 
                 if let Ok(count) = serial.read(&mut buf) {
-                    USB_SERIAL_BYTES_READ = USB_SERIAL_BYTES_READ + count;
+                    USB_SERIAL_BYTES_READ = USB_SERIAL_BYTES_READ + count as u32;
                 }
             });
         });

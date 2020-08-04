@@ -74,10 +74,24 @@ void loop()
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf);
 
+    // Clear the buffer.
+    for (int i = 0; i < sizeof(buf); i++) {
+      buf[i] = 0;
+    }
+
     if (rf95.recv(buf, &len))
     {
       digitalWrite(LED, HIGH);
+      Serial.write(88);
+      Serial.write(88);
+      Serial.write(88);
+      Serial.write(88);
+      Serial.write(len);
       Serial.write(buf, len);
+
+      // This seems to be required to flush out the buffers.  A Serial.flush() did not
+      // work.  This does leave a garbage newline at the end.
+      Serial.println();
       digitalWrite(LED, LOW);
     }
   }
