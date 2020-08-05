@@ -37,11 +37,29 @@ fn main() {
         Ok(_) => { }, // cool!
         Err(err) => { error!("table create: error {:?}", err);}
     }
+
+    match client.execute("ALTER TABLE telemetry DROP COLUMN IF EXISTS lora_xmit_cnt", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS lora_rx_bytes INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS lora_tx_bytes INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+
     let file_name = "/dev/ttyACM0";
 
     let file = File::open(file_name).unwrap();
 
     loop {
+        info!("starting loop");
         match process(&mut client, &file) {
             Err(err) => {
                 error!("Handled error, resetting:{:?}", err);
@@ -51,6 +69,7 @@ fn main() {
                 return;
             }
         }
+        info!("looping");
     }
 }
 #[derive(Debug)]
@@ -84,11 +103,17 @@ fn process(client: &mut Client, file:&File) -> Result<(),ProcessError> {
 
     for b_res in file.bytes() {
         let b = b_res?;
+        info!("received byte {}", b);
+
         if len == 0 {
             if b == 88 {
                 x_count = x_count + 1;
             } else if x_count == 4 {
                 len = b;
+            } else if x_count > 4 {
+                x_count = 0;
+                len = 0;
+                buf.clear();
             }
         } else {
             if buf.len() == len.into() {
@@ -96,7 +121,8 @@ fn process(client: &mut Client, file:&File) -> Result<(),ProcessError> {
                 let packet = rainguage_messages::deserialize(buf.as_slice())?;
                 info!("received:{:?}", packet);
                 
-                client.execute("INSERT INTO telemetry (ts, vbat, loop_cnt) VALUES ($1, $2, $3)", &[&now, &(packet.vbat as i32), &(packet.loop_cnt as i32)])?;
+                client.execute("INSERT INTO telemetry (ts, vbat, loop_cnt, lora_tx_bytes) VALUES ($1, $2, $3, $4)", 
+                    &[&now, &(packet.vbat as i32), &(packet.loop_cnt as i32), &(packet.lora_tx_bytes as i32)])?;
                 buf.clear();
                 x_count = 0;
                 len = 0;
@@ -104,6 +130,8 @@ fn process(client: &mut Client, file:&File) -> Result<(),ProcessError> {
                 buf.push(b);
             }
         }
+        info!("finished processing byte len={} x_cnt={} buf.len={}", len, x_count, buf.len());
+
     }
 
    Ok(())

@@ -157,6 +157,7 @@ fn main() -> ! {
             packet.usb_bytes_read = usb_serial_bytes_read;
             packet.usb_error_cnt = metrics::get_usb_error_cnt();
             packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
+            packet.lora_tx_bytes = metrics::get_lora_transmit_bytes();
 
             rainguage_messages::serialize(&packet, &mut buffer[4..]).unwrap();
 
@@ -164,8 +165,8 @@ fn main() -> ! {
             // include four X's as our header and configure the receive side in promiscious mode.
             // we need to include 4 b
             match lora.transmit_payload_busy(buffer, buffer.len()) {
-                Ok(_) => { 
-                    //write!(usb_write, "xmit {}\n", c).unwrap();
+                Ok(bytes) => { 
+                    metrics::increment_lora_transmit_bytes(bytes);
                 },
                 Err(_) => {
                     metrics::increment_lora_transmit_error_cnt();

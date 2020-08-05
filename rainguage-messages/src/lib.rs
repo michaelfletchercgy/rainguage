@@ -52,9 +52,9 @@ pub struct TelemetryPacket {
 
     pub usb_error_cnt: u32,
 
-    pub lora_packets_read: u32, 
+    pub lora_rx_bytes: u32, 
 
-    pub lora_packets_written: u32, 
+    pub lora_tx_bytes: u32, 
 
     pub lora_error_cnt: u32,
 
@@ -75,8 +75,8 @@ impl TelemetryPacket {
             usb_bytes_read: 0,
             usb_bytes_written: 0,
             usb_error_cnt: 0,
-            lora_packets_read: 0,
-            lora_packets_written: 0,
+            lora_rx_bytes: 0,
+            lora_tx_bytes: 0,
             lora_error_cnt: 0,
             hardware_err_other_cnt: 0
         }
