@@ -39,7 +39,7 @@ const FREQUENCY: i64 = 915;
 
 // How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
 // 200 is roughly once per minute.
-const TRANSMIT_CYCLE: usize = 16;
+const TRANSMIT_CYCLE: usize = 2;
 
 #[entry]
 fn main() -> ! {
@@ -152,12 +152,12 @@ fn main() -> ! {
 
             let mut packet = TelemetryPacket::new();
             packet.device_id = encode_device_id(id_word0, id_word1, id_word2, id_word3);
-            packet.loop_cnt = loop_cnt;
-            packet.vbat = vbat_value as u32;
-            packet.usb_bytes_read = usb_serial_bytes_read;
-            packet.usb_error_cnt = metrics::get_usb_error_cnt();
-            packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
-            packet.lora_tx_bytes = metrics::get_lora_transmit_bytes();
+            //packet.loop_cnt = loop_cnt;
+            //packet.vbat = vbat_value as u32;
+            //packet.usb_bytes_read = usb_serial_bytes_read;
+            //packet.usb_error_cnt = metrics::get_usb_error_cnt();
+            //packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
+            //packet.lora_tx_bytes = metrics::get_lora_transmit_bytes();
 
             rainguage_messages::serialize(&packet, &mut buffer[4..]).unwrap();
 

@@ -52,21 +52,23 @@ fn main() {
         Ok(_) => { }, // cool!
         Err(err) => { error!("table create: error {:?}", err);}
     }
-
-
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS corrupt BOOL DEFAULT false", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
     let file_name = "/dev/ttyACM0";
 
-    let file = File::open(file_name).unwrap();
-
     loop {
+        let file = File::open(file_name).unwrap();
+
         info!("starting loop");
+
         match process(&mut client, &file) {
             Err(err) => {
                 error!("Handled error, resetting:{:?}", err);
             },
             Ok(_) => {
                 info!("Processing completed.");
-                return;
             }
         }
         info!("looping");
@@ -101,37 +103,24 @@ fn process(client: &mut Client, file:&File) -> Result<(),ProcessError> {
     let mut len = 0;
     let mut buf:Vec<u8> = Vec::new();
 
-    for b_res in file.bytes() {
-        let b = b_res?;
-        info!("received byte {}", b);
+    let bytes_iter = file.bytes()
+        .map(|r| r.unwrap());
+    let packet_iter = rainguage_messages::PacketIterator::new(bytes_iter);
 
-        if len == 0 {
-            if b == 88 {
-                x_count = x_count + 1;
-            } else if x_count == 4 {
-                len = b;
-            } else if x_count > 4 {
-                x_count = 0;
-                len = 0;
-                buf.clear();
-            }
-        } else {
-            if buf.len() == len.into() {
+    for packet in packet_iter {
+        info!("received:{:?}", packet);
+        match packet {
+            Ok(packet) => {
                 let now = chrono::Utc::now();
-                let packet = rainguage_messages::deserialize(buf.as_slice())?;
-                info!("received:{:?}", packet);
                 
                 client.execute("INSERT INTO telemetry (ts, vbat, loop_cnt, lora_tx_bytes) VALUES ($1, $2, $3, $4)", 
                     &[&now, &(packet.vbat as i32), &(packet.loop_cnt as i32), &(packet.lora_tx_bytes as i32)])?;
                 buf.clear();
-                x_count = 0;
-                len = 0;
-            } else {
-                buf.push(b);
+            },
+            Err(err) => {
+                
             }
         }
-        info!("finished processing byte len={} x_cnt={} buf.len={}", len, x_count, buf.len());
-
     }
 
    Ok(())

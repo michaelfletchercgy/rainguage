@@ -94,6 +94,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8aebca1129a03dc6dc2b127edd729435bbc4a37e1d5f4d7513165089ceb02634"
 
 [[package]]
+name = "crc"
+version = "2.0.0"
+source = "git+https://github.com/mrhooray/crc-rs#86696be09b7605d27327bbe659ac6c0e990c267f"
+
+[[package]]
 name = "crypto-mac"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -651,6 +656,8 @@ dependencies = [
 name = "rainguage-messages"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
+ "crc",
  "postcard",
  "serde",
 ]
