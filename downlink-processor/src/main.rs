@@ -52,10 +52,47 @@ fn main() {
         Ok(_) => { }, // cool!
         Err(err) => { error!("table create: error {:?}", err);}
     }
+
     match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS corrupt BOOL DEFAULT false", &[]) {
         Ok(_) => { }, // cool!
         Err(err) => { error!("table create: error {:?}", err);}
     }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS tip_cnt INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS temperature REAL", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS relative_humidity REAL", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS usb_bytes_read INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS usb_bytes_written INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS lora_error_cnt INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+
+    match client.execute("ALTER TABLE telemetry ADD COLUMN IF NOT EXISTS hardware_error_other_cnt INTEGER", &[]) {
+        Ok(_) => { }, // cool!
+        Err(err) => { error!("table create: error {:?}", err);}
+    }
+    
     let file_name = "/dev/ttyACM0";
 
     loop {
@@ -78,7 +115,7 @@ fn main() {
 enum ProcessError {
     CorruptTelemetry(rainguage_messages::DeserializeError),
     IOError,
-    DBError
+    DBError(postgres::Error)
 }
 
 impl From<std::io::Error> for ProcessError {
@@ -88,8 +125,8 @@ impl From<std::io::Error> for ProcessError {
 }
 
 impl From<postgres::Error> for ProcessError {
-    fn from(_: postgres::Error) -> Self {
-        ProcessError::DBError
+    fn from(err: postgres::Error) -> Self {
+        ProcessError::DBError(err)
     }
 }
 
@@ -111,8 +148,22 @@ fn process(client: &mut Client, file:&File) -> Result<(),ProcessError> {
             Ok(packet) => {
                 let now = chrono::Utc::now();
                 
-                client.execute("INSERT INTO telemetry (ts, vbat, loop_cnt, lora_tx_bytes) VALUES ($1, $2, $3, $4)", 
-                    &[&now, &(packet.vbat as i32), &(packet.loop_cnt as i32), &(packet.lora_tx_bytes as i32)])?;
+                client.execute("INSERT INTO telemetry (ts, vbat, loop_cnt, lora_rx_bytes, lora_tx_bytes, lora_error_cnt, tip_cnt, temperature, relative_humidity, usb_bytes_read, usb_bytes_written, usb_err_cnt, hardware_error_other_cnt)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)", 
+                    &[  &now, 
+                        &(packet.vbat as i32),
+                        &(packet.loop_cnt as i32),
+                        &(packet.lora_rx_bytes as i32),
+                        &(packet.lora_tx_bytes as i32),
+                        &(packet.lora_error_cnt as i32),
+                        &(packet.tip_cnt as i32),
+                        &(packet.temperature as f32),
+                        &(packet.relative_humidity as f32),
+                        &(packet.usb_bytes_read as i32),
+                        &(packet.usb_bytes_written as i32),
+                        &(packet.usb_error_cnt as i32),
+                        &(packet.hardware_err_other_cnt as i32),
+                        ])?;
                 buf.clear();
             },
             Err(_err) => {

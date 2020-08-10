@@ -26,6 +26,7 @@ impl Write for UsbWrite {
                             Ok(bytes_written) => {
                                 written += bytes_written;
 
+                                super::metrics::increment_usb_bytes_written(written as u32);
                                 if written == bytes.len() {
                                     stop = true;
                                 }

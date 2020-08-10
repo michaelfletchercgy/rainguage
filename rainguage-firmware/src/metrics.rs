@@ -6,12 +6,22 @@ static mut LORA_TRANSMIT_ERROR_CNT:u32 = 0;
 
 static mut LORA_TRANSMIT_BYTES:u32 = 0;
 
+static mut USB_BYTES_WRITTEN:u32 = 0;
+
 pub fn increment_usb_error_cnt() {
     unsafe { USB_ERROR_CNT = USB_ERROR_CNT.wrapping_add(1); }
 }
 
 pub fn get_usb_error_cnt() -> u32 {
     unsafe { USB_ERROR_CNT }
+}
+
+pub fn increment_usb_bytes_written(bytes: u32) {
+    unsafe { USB_BYTES_WRITTEN = USB_BYTES_WRITTEN.wrapping_add(bytes) }
+}
+
+pub fn get_usb_bytes_written() -> u32 {
+    unsafe { USB_BYTES_WRITTEN }
 }
 
 pub fn increment_lora_transmit_error_cnt() {

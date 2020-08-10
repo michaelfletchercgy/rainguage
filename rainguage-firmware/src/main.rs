@@ -155,10 +155,18 @@ fn main() -> ! {
             packet.loop_cnt = loop_cnt;
             packet.vbat = vbat_value as u32;
             packet.usb_bytes_read = usb_serial_bytes_read;
+            packet.usb_bytes_written = metrics::get_usb_bytes_written();
             packet.usb_error_cnt = metrics::get_usb_error_cnt();
             packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
             packet.lora_tx_bytes = metrics::get_lora_transmit_bytes();
 
+            // TODO the future
+            packet.tip_cnt = 0;
+            packet.temperature = 0.0;
+            packet.relative_humidity = 0.0;
+            packet.lora_rx_bytes = 0;
+            packet.hardware_err_other_cnt= 0;
+            
             // The RadioHead library we are currently using on the download firmware includes a 4-byte header.  So
             // we leave 4 0 bytes at the beginning of our buffer.
             rainguage_messages::serialize(&packet, &mut buffer[4..]).unwrap();
