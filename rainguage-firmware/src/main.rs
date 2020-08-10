@@ -131,6 +131,10 @@ fn main() -> ! {
             }
          };
 
+    if let Err(err) = lora.set_tx_power(20, 1) {
+        write!(usb_write, "Error setting power:{:?}", err).unwrap();
+    }
+    
     let id_word0 = unsafe { *(0x0080A00C as *const u32) };
     let id_word1 = unsafe { *(0x0080A040 as *const u32) };
     let id_word2 = unsafe { *(0x0080A044 as *const u32) };
