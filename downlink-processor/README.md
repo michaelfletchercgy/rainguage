@@ -3,14 +3,12 @@
 Processes raw telemetry from the downlink device and stores it in a postgres database.  The primary feature is adding a
 timestamp to the data
 
-There is a small serial protocol.
-
-First, four X's
-Then, the length of a packet (in u8)
-Then the packet
+The downlink firmware will write the packets to the serial port.  The serial port must be in raw-mode otherwise certain
+bytes will be dropped.
 
 ## Future
 
+* Use termios (via rust, maybe termion) to put the tty into raw mode instead of the shell script.
 * Store records in a persistent queue if either the network or remote postgres database unavailable.
 * Send an acknowledgement
 * Produce an integration test
