@@ -18,6 +18,11 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08c48aae112d48ed9f069b33538ea9e3e90aa263cfa3d1c24309612b1f7472de"
 
 [[package]]
+name = "crc"
+version = "2.0.0"
+source = "git+https://github.com/mrhooray/crc-rs#86696be09b7605d27327bbe659ac6c0e990c267f"
+
+[[package]]
 name = "generic-array"
 version = "0.12.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -96,6 +101,8 @@ dependencies = [
 name = "rainguage-messages"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
+ "crc",
  "postcard",
  "serde",
 ]

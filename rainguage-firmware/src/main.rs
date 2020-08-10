@@ -159,11 +159,10 @@ fn main() -> ! {
             packet.lora_error_cnt = metrics::get_lora_transmit_error_cnt();
             packet.lora_tx_bytes = metrics::get_lora_transmit_bytes();
 
+            // The RadioHead library we are currently using on the download firmware includes a 4-byte header.  So
+            // we leave 4 0 bytes at the beginning of our buffer.
             rainguage_messages::serialize(&packet, &mut buffer[4..]).unwrap();
 
-            // The RadioHead library we are currently using on the receive side includes a 4-byte header.  So we
-            // include four X's as our header and configure the receive side in promiscious mode.
-            // we need to include 4 b
             match lora.transmit_payload_busy(buffer, buffer.len()) {
                 Ok(bytes) => { 
                     metrics::increment_lora_transmit_bytes(bytes);
@@ -174,9 +173,6 @@ fn main() -> ! {
             }
         }
         transmit_counter = transmit_counter + 1;
-
-        // write!(usb_write, "interrupt_count={} usb_serial_bytes_read={}, vbat={} vbat_volt={}\r\n", 
-        // interrupt_count, usb_serial_bytes_read, vbat_value, vbat_volt).unwrap();
 
         red_led.set_low().unwrap();
 

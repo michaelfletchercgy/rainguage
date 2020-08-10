@@ -110,6 +110,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "crc"
+version = "2.0.0"
+source = "git+https://github.com/mrhooray/crc-rs#86696be09b7605d27327bbe659ac6c0e990c267f"
+
+[[package]]
 name = "embedded-hal"
 version = "0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -257,6 +262,8 @@ checksum = "e2a38df5b15c8d5c7e8654189744d8e396bddc18ad48041a500ce52d6948941f"
 name = "rainguage-messages"
 version = "0.1.0"
 dependencies = [
+ "byteorder",
+ "crc",
  "postcard",
  "serde",
 ]
