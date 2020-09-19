@@ -1,4 +1,4 @@
-#!/bin/sh
-PORT=/dev/ttyACM0
-stty -F /dev/ttyACM0 raw
+#!/bin/bash
+source .env
+stty -F $SERIAL_PORT raw
 cargo run

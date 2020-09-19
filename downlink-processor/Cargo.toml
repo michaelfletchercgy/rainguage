@@ -9,6 +9,7 @@ rainguage-messages = { path="../rainguage-messages" }
 "chrono" = "0.4"
 log = "0.4.11"
 simplelog = "0.8.0"
+dotenv = "0.15.0"
 
 [dependencies.postgres]
 version = "0.17.5"

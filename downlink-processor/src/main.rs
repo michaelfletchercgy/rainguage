@@ -1,3 +1,6 @@
+use dotenv::dotenv;
+use dotenv::var;
+
 use postgres::Config;
 use postgres::Client;
 use postgres::NoTls;
@@ -10,14 +13,15 @@ use std::io::Read;
 extern crate log;
 
 fn main() {
-    let _ = simplelog::SimpleLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default());
+    simplelog::SimpleLogger::init(simplelog::LevelFilter::Info, simplelog::Config::default()).unwrap();
+    dotenv().ok();
 
     info!("Starting ...");
     let mut pg_config = Config::new();
-    pg_config.host("localhost");
-    pg_config.user("postgres");
-    pg_config.password("supersecret99");
-    pg_config.port(15432);
+    pg_config.host(&var("POSTGRES_HOST").unwrap());
+    pg_config.user(&var("POSTGRES_USER").unwrap());
+    pg_config.password(&var("POSTGRES_PASSWORD").unwrap());
+    pg_config.port(var("POSTGRES_PORT").unwrap().parse::<u16>().unwrap());
     let mut client = pg_config.connect(NoTls).unwrap();
 
     match client.execute("
@@ -93,9 +97,10 @@ fn main() {
         Err(err) => { error!("table create: error {:?}", err);}
     }
     
-    let file_name = "/dev/ttyACM0";
+    let file_name = &var("SERIAL_PORT").unwrap();
 
     loop {
+        info!("Opening {}.  Hopefully you remembered to put it into raw mode.", file_name);
         let file = File::open(file_name).unwrap();
 
         info!("starting loop");
