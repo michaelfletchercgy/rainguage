@@ -18,7 +18,7 @@ sx127x_lora = "0.3.1"
 
 [dependencies.feather_m0]
 version="0.6.1"
-features=["usb", "rt"]
+features=["usb", "rt", "unproven"]
 
 [profile.dev]
 incremental = false
