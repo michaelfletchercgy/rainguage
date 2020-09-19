@@ -12,6 +12,7 @@ extern crate sx127x_lora;
 extern crate rainguage_messages;
 
 mod analog_pin;
+mod dht22;
 mod metrics;
 mod usb_write;
 
@@ -28,6 +29,7 @@ use hal::entry;
 use hal::pac::{interrupt, CorePeripherals, Peripherals};
 use hal::prelude::*;
 use hal::time::MegaHertz;
+
 use hal::usb::UsbBus;
 use sx127x_lora::LoRa;
 use usb_device::bus::UsbBusAllocator;
@@ -40,6 +42,9 @@ const FREQUENCY: i64 = 915;
 // How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
 // 200 is roughly once per minute.
 const TRANSMIT_CYCLE: usize = 16;
+
+// How frequently should we measure temperature.
+const TEMPERATURE_CYCLE: usize = TRANSMIT_CYCLE * 1;
 
 #[entry]
 fn main() -> ! {
@@ -120,21 +125,26 @@ fn main() -> ! {
     let reset_out = parts.pa8.into_open_drain_output(&mut parts.port);
     let _ = parts.pa9.into_open_drain_output(&mut parts.port); // int_out lora interrupt line
 
-     let mut lora = match LoRa::new(
-         lora_spi, cs_out, reset_out, FREQUENCY,
-         Delay::new(core.SYST, &mut clocks)) {
-            Ok(lora) => lora,
-            Err(err) => {
-                write!(usb_write, "Failed to initialize lora:{:?}", err).unwrap();
+    unsafe {
+        DELAY = Some(Delay::new(core.SYST, &mut clocks));
+    }
 
-                fatal_error("lora failed to initialize", &mut usb_write)
+    let lora_delay = SharedDelay { };    
+    let mut lora = match LoRa::new(
+         lora_spi, cs_out, reset_out, FREQUENCY,
+         lora_delay) {
+            Ok(lora) => lora,
+            Err(_) => {
+                fatal_error("lora failed to initialize", &mut red_led, 5, &mut usb_write)
             }
-         };
+        };
 
     if let Err(err) = lora.set_tx_power(20, 1) {
         write!(usb_write, "Error setting power:{:?}", err).unwrap();
     }
-    
+
+    let mut dht22_pin = parts.pa16.into_open_drain_output(&mut parts.port);    
+
     let id_word0 = unsafe { *(0x0080A00C as *const u32) };
     let id_word1 = unsafe { *(0x0080A040 as *const u32) };
     let id_word2 = unsafe { *(0x0080A044 as *const u32) };
@@ -142,6 +152,13 @@ fn main() -> ! {
 
     let mut loop_cnt: u32 = 0;
     let mut transmit_counter = TRANSMIT_CYCLE;
+    let mut temperature_counter = 0;
+
+    let mut reading = dht22::Reading {
+        temperature: 0.0,
+        humidity: 0.0
+    };
+    
     loop {
         cycle_delay(15 * 1024 * 1024);
         red_led.set_high().unwrap();
@@ -149,6 +166,32 @@ fn main() -> ! {
         let vbat_value = vbat.read();
 
         let usb_serial_bytes_read = unsafe{ USB_SERIAL_BYTES_READ };
+
+        if temperature_counter >= TEMPERATURE_CYCLE {
+            temperature_counter = 0;
+            let mut delay2 = SharedDelay { };    
+
+            let mut delay_us = |us| { delay2.delay_us(us)};
+
+            if let Ok(_) = dht22::init(&mut dht22_pin, &mut delay_us) {
+                let mut in_pin = dht22_pin.into_floating_input(&mut parts.port);
+                
+                match dht22::read::<()>(&mut in_pin) {
+                    Ok(new_reading) => {
+                        reading = new_reading;
+                    },
+                    Err(_err) => {
+                        
+                    }
+                }
+    
+                dht22_pin = in_pin.into_open_drain_output(&mut parts.port);
+            } else {
+                
+            }
+        } else {
+            temperature_counter = temperature_counter + 1;
+        }
 
         if transmit_counter >= TRANSMIT_CYCLE {
             transmit_counter = 0;
@@ -166,8 +209,8 @@ fn main() -> ! {
 
             // TODO the future
             packet.tip_cnt = 0;
-            packet.temperature = 0.0;
-            packet.relative_humidity = 0.0;
+            packet.temperature = reading.temperature;
+            packet.relative_humidity = reading.humidity;
             packet.lora_rx_bytes = 0;
             packet.hardware_err_other_cnt= 0;
             
@@ -222,9 +265,47 @@ fn encode_device_id(word0: u32, word1: u32, word2: u32, word3: u32) -> [u8; 16] 
     device_id
 
 }
+
+struct SharedDelay {
+
+}
+
+impl embedded_hal::blocking::delay::DelayMs<u8> for SharedDelay {
+    fn delay_ms(&mut self, ms: u8) {
+        unsafe {
+            DELAY.as_mut().map(|d| {
+                d.delay_ms(ms);
+            });
+        }
+    }
+}
+
+impl embedded_hal::blocking::delay::DelayUs<u32> for SharedDelay {
+    fn delay_us(&mut self, us: u32) {
+        unsafe {
+            DELAY.as_mut().map(|d| {
+                d.delay_us(us);
+            });
+        }
+    }
+}
 /// If we fail in a fatal way, the best we can do is print that error
 /// over and over
-fn fatal_error(msg: &str, usb_output:&mut UsbWrite) -> ! {
+fn fatal_error(msg: &str,
+        led_pin: &mut dyn OutputPin<Error = ()>,
+        count: u32,
+        usb_output:&mut UsbWrite) -> ! {
+    let blink_delay = 15 * 1024 * 1024;
+
+    led_pin.set_low().unwrap();
+    cycle_delay(blink_delay);
+
+    for _ in 0 .. count {
+        led_pin.set_high().unwrap();
+        cycle_delay(blink_delay);
+        led_pin.set_low().unwrap();
+        cycle_delay(blink_delay);
+    }
     loop {
         match write!(usb_output, "fatal error: {}", msg) {
             Ok(_) => {}, // don't care
@@ -233,6 +314,7 @@ fn fatal_error(msg: &str, usb_output:&mut UsbWrite) -> ! {
     }
 }
 
+static mut DELAY: Option<Delay> = None;
 static mut USB_ALLOCATOR: Option<UsbBusAllocator<UsbBus>> = None;
 static mut USB_BUS: Option<UsbDevice<UsbBus>> = None;
 static mut USB_SERIAL: Option<SerialPort<UsbBus>> = None;
