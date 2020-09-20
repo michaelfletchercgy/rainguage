@@ -1,0 +1,24 @@
+[package]
+name = "telemetry-http-service"
+version = "0.1.0"
+authors = ["Michael Fletcher <m.fletcher@theplanet.ca>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rocket = "0.4.5"
+rainguage-messages = { path="../rainguage-messages" }
+"chrono" = "0.4"
+log = "0.4.11"
+simplelog = "0.8.0"
+dotenv = "0.15.0"
+
+[dependencies.rocket_contrib]
+version = "0.4.5"
+default-features = false
+features = ["json"]
+
+[dependencies.postgres]
+version = "0.17.5"
+features = ["with-chrono-0_4"]
