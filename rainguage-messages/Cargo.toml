@@ -14,3 +14,4 @@ byteorder = { version = "1", default-features = false }
 [dependencies.crc]
 # The master / 2.0.0 version of crc has nostd support.
 git = "https://github.com/mrhooray/crc-rs"
+rev = "86696be09b7605d27327bbe659ac6c0e990c267f"

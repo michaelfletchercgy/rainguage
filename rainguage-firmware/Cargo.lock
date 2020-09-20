@@ -113,7 +113,7 @@ dependencies = [
 [[package]]
 name = "crc"
 version = "2.0.0"
-source = "git+https://github.com/mrhooray/crc-rs#86696be09b7605d27327bbe659ac6c0e990c267f"
+source = "git+https://github.com/mrhooray/crc-rs?rev=86696be09b7605d27327bbe659ac6c0e990c267f#86696be09b7605d27327bbe659ac6c0e990c267f"
 
 [[package]]
 name = "embedded-hal"
