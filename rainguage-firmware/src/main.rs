@@ -41,7 +41,7 @@ const FREQUENCY: i64 = 915;
 
 // How frequently should we transmit.  So every TRANSMIT_CYCLE loops we will sent a telemetry packer.
 // 200 is roughly once per minute.
-const TRANSMIT_CYCLE: usize = 16;
+const TRANSMIT_CYCLE: usize = 160;
 
 // How frequently should we measure temperature.
 const TEMPERATURE_CYCLE: usize = TRANSMIT_CYCLE * 1;
